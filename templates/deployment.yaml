@@ -1,0 +1,56 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ include "multi-container-app-chart.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "multi-container-app-chart.name" . }}
+    helm.sh/chart: {{ include "multi-container-app-chart.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "multi-container-app-chart.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "multi-container-app-chart.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        {{- range .Values.containers }}
+        - name: {{ .name | quote }}
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.pullPolicy }}
+          ports:
+            {{- range .ports }}
+            - name: {{ .name | quote }}
+              containerPort: {{ .port }}
+              protocol: TCP
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .livenessProbe.path }}
+              port: {{ .livenessProbe.port | quote }}
+          readinessProbe:
+            httpGet:
+              path: {{ .readinessProbe.path }}
+              port: {{ .readinessProbe.port | quote }}
+          resources:
+          {{ toYaml .resources | indent 12 }}
+        {{- end }}
+
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
